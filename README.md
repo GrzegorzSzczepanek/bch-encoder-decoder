@@ -3,7 +3,7 @@
 ## Spis Treści
 
 - [Wprowadzenie](#wprowadzenie)
-- [Teoria Tła](#teoria-tła)
+- [Teoria](#teoria)
   - [Kody BCH](#kody-bch)
   - [Ciała Skończone (Ciała Galois)](#ciała-skończone-ciała-galois)
 - [Przegląd Algorytmu](#przegląd-algorytmu)
@@ -171,12 +171,12 @@ Upewnij się, że masz zainstalowany Python 3 na swoim systemie.
 Aby zakodować 7-bitową wiadomość przy użyciu kodu BCH (15,7):
 
 ```sh
-python bch.py encode -n 15 -k 7 -message <7-bitowa-wiadomość-binarnie>
+python bch_terminal_implementation.py encode -n 15 -k 7 -message <7-bitowa-wiadomość-binarnie>
 ```
 
 #### Przykład
 ```sh
-python bch.py encode -n 15 -k 7 -message 1010101
+python bch_terminal_implementation.py encode -n 15 -k 7 -message 1010101
 ```
 
 ### Dekodowanie
@@ -184,24 +184,23 @@ python bch.py encode -n 15 -k 7 -message 1010101
 Aby zdekodować 15-bitowe słowo kodowe i skorygować do 2 błędów:
 
 ```sh
-python bch.py decode -n 15 -k 7 -codeword <15-bitowe-słowo-kodowe-binarnie>
+python bch_terminal_implementation.py decode -n 15 -k 7 -codeword <15-bitowe-słowo-kodowe-binarnie>
 ```
 
 #### Przykład
 ```sh
-python bch.py decode -n 15 -k 7 -codeword 101010100011001
+python bch_terminal_implementation.py decode -n 15 -k 7 -codeword 101010100011001
 ```
 
-###Kodowanie
+### Kodowanie
 
 Polecenie:
 ```sh
-python bch.py encode -n 15 -k 7 -message 1010101
+python bch_terminal_implementation.py encode -n 15 -k 7 -message 1010101
 ```
 Wynik:
 
 ```yaml
-Copy code
 Starting encoding process...
 Message integer: 85
 Shifted message: 0b101010100000000
