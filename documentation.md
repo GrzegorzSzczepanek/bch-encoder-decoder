@@ -1,4 +1,4 @@
-# Koder i Dekoder Kodów BCH w Pythonie (Wersja CLI)
+# Koder i Dekoder Kodów BCH w Pythonie
 
 ## Spis Treści
 

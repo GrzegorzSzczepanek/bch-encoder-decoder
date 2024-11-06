@@ -22,10 +22,8 @@
         document.getElementById('encodeForm').addEventListener('submit', function (e) {
             e.preventDefault();
             
-            // Get the message input
             const message = document.getElementById('messageInput').value;
     
-            // Make a POST request to the /encode endpoint
             fetch('/encode', {
                 method: 'POST',
                 headers: {
@@ -36,10 +34,8 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    // If there's an error, display the error message
                     document.getElementById('encodedMessage').innerHTML = `Error: ${data.error}`;
                 } else {
-                    // Otherwise, display the encoded message
                     document.getElementById('encodedMessage').innerHTML = `Encoded Message: ${data.encoded_message}`;
                 }
             })
