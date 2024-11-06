@@ -37,8 +37,6 @@ Ten dokument dostarcza szczegółowego wyjaśnienia implementacji w Pythonie kod
 
 ---
 
-## Teoria Tła
-
 ### Kody BCH
 
 Kody BCH to klasa cyklicznych kodów korekcyjnych błędów, skonstruowanych przy użyciu ciał skończonych. Są zdolne do korekcji wielu losowych błędów i są szeroko stosowane w cyfrowej komunikacji i systemach przechowywania danych.
