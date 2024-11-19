@@ -4,6 +4,7 @@ import bchlib
 import random
 import logging
 import sys
+import argparse
 
 # For colored logging
 try:
@@ -17,6 +18,7 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 def log_colored(message, color):
+    """Log messages with color."""
     logging.info(f"{color}{message}{Style.RESET_ALL}")
 
 def bitflip(data, bit):
@@ -44,11 +46,6 @@ def decode_and_correct(bch, corrupted_data):
     data = corrupted_data[:-bch.ecc_bytes]
     recv_ecc = corrupted_data[-bch.ecc_bytes:]
 
-    # Debugging statements
-    print(f"Data length: {len(data)} bytes")
-    print(f"Recv ECC length: {len(recv_ecc)} bytes")
-    print(f"Expected ECC bytes: {bch.ecc_bytes}")
-
     nerr = bch.decode(data, recv_ecc)
     if nerr >= 0:
         corrected_data = bytearray(data)
@@ -58,9 +55,42 @@ def decode_and_correct(bch, corrupted_data):
     else:
         return None, None
 
+def visualize_changes(original, corrupted, corrected, injected_bits, corrected_bits):
+    """Visualize changes with colors for errors and corrections."""
+    output = []
+    total_bits = len(original) * 8
+
+    for bit in range(total_bits):
+        byte_index = bit // 8
+        bit_in_byte = 7 - (bit % 8)
+        bit_mask = 1 << bit_in_byte
+
+        orig_bit = (original[byte_index] >> bit_in_byte) & 1
+        corru_bit = (corrupted[byte_index] >> bit_in_byte) & 1
+        corrected_bit = (corrected[byte_index] >> bit_in_byte) & 1
+
+        if bit in injected_bits and bit in corrected_bits:
+            # Injected and corrected
+            output.append(Fore.RED + f"{orig_bit}" + Fore.GREEN + f"{corrected_bit}" + Style.RESET_ALL)
+        elif bit in injected_bits:
+            # Injected but not corrected
+            output.append(Fore.RED + f"{corru_bit}" + Style.RESET_ALL)
+        elif bit in corrected_bits:
+            # Corrected
+            output.append(Fore.GREEN + f"{corrected_bit}" + Style.RESET_ALL)
+        else:
+            # Unchanged
+            output.append(f"{orig_bit}")
+
+        # Add a space every 8 bits
+        if bit % 8 == 7:
+            output.append(" ")
+
+    return ''.join(output)
+
 def run_test(bch, message, num_errors=0):
     """Run a test by encoding, injecting errors, and decoding."""
-    logging.info("Original Message:")
+    logging.info(f"\n{'-'*40}\nOriginal Message:")
     logging.info(message.hex())
 
     # Encode the message
@@ -70,51 +100,59 @@ def run_test(bch, message, num_errors=0):
 
     # Inject errors
     if num_errors > 0:
-        corrupted_codeword, error_positions = inject_errors(codeword, num_errors)
-        logging.info(f"\nInjected {num_errors} Errors at bit positions: {error_positions}")
+        corrupted_codeword, injected_bits = inject_errors(codeword, num_errors)
+        log_colored(f"\nInjected {num_errors} Errors at bit positions: {injected_bits}", Fore.RED)
         logging.info("Corrupted Codeword:")
         logging.info(corrupted_codeword.hex())
     else:
         corrupted_codeword = codeword
-        error_positions = []
+        injected_bits = []
 
     # Decode and correct
-    corrected_codeword, corrected_positions = decode_and_correct(bch, corrupted_codeword)
+    corrected_codeword, corrected_bits = decode_and_correct(bch, corrupted_codeword)
     if corrected_codeword:
         logging.info("\nCorrected Codeword:")
         logging.info(corrected_codeword.hex())
 
-        # Compare original and corrected codeword
-        differences = []
-        for i in range(len(codeword)):
-            if codeword[i] != corrected_codeword[i]:
-                differences.append(i)
+        # Visualize the changes
+        logging.info("\nVisualized Changes (bits):")
+        visualization = visualize_changes(codeword, corrupted_codeword, corrected_codeword, injected_bits, corrected_bits)
+        logging.info(visualization)
 
-        # Logging the corrections
-        if differences:
-            logging.info("\nDifferences found at byte positions:")
-            for idx in differences:
-                byte_diff = f"Byte {idx}: Original {codeword[idx]:02X}, Corrected {corrected_codeword[idx]:02X}"
-                log_colored(byte_diff, Fore.RED)
+        # Log corrected and injected bits
+        if corrected_bits:
+            log_colored("\nCorrected Bit Positions:", Fore.GREEN)
+            for bit in corrected_bits:
+                log_colored(f"Bit {bit}", Fore.GREEN)
 
+        if injected_bits:
+            log_colored("\nInjected Bit Positions:", Fore.RED)
+            for bit in injected_bits:
+                log_colored(f"Bit {bit}", Fore.RED)
+
+        # Check if all injected bits were corrected
+        if set(injected_bits) == set(corrected_bits):
+            log_colored("\nAll injected errors were successfully corrected!", Fore.GREEN)
         else:
-            logging.info("\nNo differences found between original and corrected codeword.")
-
-        # Show corrected bits
-        if corrected_positions:
-            logging.info("\nCorrected Bit Positions:")
-            for bit in corrected_positions:
-                bit_info = f"Bit {bit}"
-                log_colored(bit_info, Fore.GREEN)
-
+            log_colored("\nSome injected errors were not corrected!", Fore.RED)
     else:
         logging.error("Decoding failed. Unable to correct the errors.")
 
 def main():
-    # Parameters for BCH
-    t = 5  # Error correction capability
-    m = 8  # Galois Field GF(2^m), allows codeword lengths up to 2^m - 1
-    bch = bchlib.BCH(t, m=m)
+    parser = argparse.ArgumentParser(description='BCH Encoder and Decoder with Error Injection')
+    parser.add_argument('-t', type=int, default=5, help='Error correction capability (default: 5)')
+    parser.add_argument('-m', type=int, default=8, help='Galois Field order (default: 8)')
+    parser.add_argument('-message', type=str, help='Message to encode in hexadecimal')
+    parser.add_argument('-num_errors', type=int, default=0, help='Number of bit errors to inject (default: 0)')
+    parser.add_argument('-verbose', action='store_true', help='Enable detailed logging')
+    args = parser.parse_args()
+
+    # Configure logging level
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    # Initialize BCH
+    bch = bchlib.BCH(args.t, m=args.m)
 
     # Compute maximum data length in bits and bytes
     max_data_bits = bch.n - bch.ecc_bits
@@ -127,17 +165,18 @@ def main():
     print(f"Maximum data bits: {max_data_bits} bits")
     print(f"Maximum data bytes: {max_data_bytes} bytes")
 
-    # Generate random message of maximum length
-    message = bytearray(random.getrandbits(8) for _ in range(max_data_bytes))
+    # Prepare message
+    if args.message:
+        message = bytearray.fromhex(args.message)
+        if len(message) > max_data_bytes:
+            print(f"Error: Message length exceeds maximum allowed ({max_data_bytes} bytes)")
+            sys.exit(1)
+    else:
+        # Generate random message of maximum length
+        message = bytearray(random.getrandbits(8) for _ in range(max_data_bytes))
 
-    # Run test without error injection
-    logging.info("\nRunning test without error injection:")
-    run_test(bch, message, num_errors=0)
-
-    # Run test with error injection
-    logging.info("\nRunning test with error injection:")
-    num_errors = t  # Inject up to t errors
-    run_test(bch, message, num_errors=num_errors)
+    # Run test
+    run_test(bch, message, num_errors=args.num_errors)
 
 if __name__ == "__main__":
     main()
