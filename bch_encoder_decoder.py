@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+# TODO popraw PDFa
+# TODO add option to inject errors into specific bits (input)
+# TODO sprawozdanie
+# TODO update requitements and pass the libs
+# TODO odwołania do źródeł (bchlib na gituhubie) z dniem kiedy czytaliśmy
+
 import bchlib
 import random
 import logging
@@ -31,18 +37,22 @@ def hamming_7_4_encode(data_bits):
     return c
 
 def hamming_7_4_decode(codeword):
-    """Decode 7 bits codeword into 4 bits of data using Hamming (7,4) code."""
     r = codeword  # Should be a list of 7 bits
     s = [0, 0, 0]
     s[0] = r[0] ^ r[3] ^ r[4] ^ r[6]
     s[1] = r[1] ^ r[3] ^ r[5] ^ r[6]
     s[2] = r[2] ^ r[4] ^ r[5] ^ r[6]
     syndrome = (s[0] << 2) | (s[1] << 1) | s[2]
+    logging.debug(f"Syndrome: {syndrome} (binary: {''.join(map(str, s))})")
+
     if syndrome != 0:
         error_pos = syndrome - 1  # Positions are from 0 to 6
+        logging.debug(f"Correcting bit at position {error_pos}")
         r[error_pos] ^= 1  # Correct the error
+
     data_bits = [r[3], r[4], r[5], r[6]]
     return data_bits, syndrome
+
 
 def log_colored(message, color):
     """Log messages with color."""
