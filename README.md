@@ -1,4 +1,4 @@
-# Koder i Dekoder Kodów BCH w Pythonie
+# Koder i Dekoder Kodów BCH w Python3ie
 
 ## Spis Treści
 
@@ -18,7 +18,8 @@
 
 ## Wprowadzenie
 
-Niniejszy dokument przedstawia instrukcję obsługi aplikacji napisanej w języku Python, która implementuje koder i dekoder kodów BCH (Bose–Chaudhuri–Hocquenghem). Program umożliwia kodowanie i dekodowanie wiadomości przy użyciu kodów BCH, wstrzykiwanie błędów oraz wizualizację procesu korekcji błędów.
+Niniejszy dokument przedstawia instrukcję obsługi aplikacji napisanej w języku Python3, która implementuje koder i dekoder kodów BCH (Bose–Chaudhuri–Hocquenghem). Program umożliwia kodowanie i dekodowanie wiadomości przy użyciu kodów BCH, wstrzykiwanie błędów oraz wizualizację procesu korekcji błędów.
+Matematyczne podstawy kodów BCH znajdują się w tym [pliku](Matematyczne-Podstawy-Kodów-BCH.pdf).
 
 ## Podstawy Teoretyczne
 
@@ -48,7 +49,7 @@ Kody BCH opierają się na arytmetyce w ciałach skończonych, zwanych ciałami 
 
 ### Wymagania
 
-- **Python 3.x**
+- **Python3 3.x**
 - **Biblioteki**:
   - `bchlib` (instalacja: `pip install bchlib`)
   - `colorama` (instalacja: `pip install colorama`)
@@ -68,7 +69,7 @@ Program akceptuje następujące argumenty:
 Aby wyświetlić pomoc:
 
 ```bash
-python bch_encoder_decoder.py -h
+python3 bch_encoder_decoder.py -h
 ```
 
 ### Przykłady Użycia
@@ -76,7 +77,7 @@ python bch_encoder_decoder.py -h
 1. **Kodowanie i dekodowanie losowej wiadomości bez błędów**:
 
    ```bash
-   python bch_encoder_decoder.py
+   python3 bch_encoder_decoder.py
    ```
 
    - Używa domyślnych wartości t=5 i m=8.
@@ -86,7 +87,7 @@ python bch_encoder_decoder.py -h
 2. **Kodowanie i dekodowanie losowej wiadomości z wstrzyknięciem 5 błędów**:
 
    ```bash
-   python bch_encoder_decoder.py -num_errors 5
+   python3 bch_encoder_decoder.py -num_errors 5
    ```
 
    - Generuje losową wiadomość.
@@ -95,7 +96,7 @@ python bch_encoder_decoder.py -h
 3. **Kodowanie i dekodowanie własnej wiadomości**:
 
    ```bash
-   python bch_encoder_decoder.py -message 4f70656e414945
+   python3 bch_encoder_decoder.py -message 4f70656e414945
    ```
 
    - Koduje podaną wiadomość `4f70656e414945` (format szesnastkowy).
@@ -104,7 +105,7 @@ python bch_encoder_decoder.py -h
 4. **Kodowanie i dekodowanie z wstrzyknięciem błędów i szczegółowym logowaniem**:
 
    ```bash
-   python bch_encoder_decoder.py -message 4f70656e414945 -num_errors 3 -verbose
+   python3 bch_encoder_decoder.py -message 4f70656e414945 -num_errors 3 -verbose
    ```
 
    - Koduje podaną wiadomość.
@@ -113,7 +114,7 @@ python bch_encoder_decoder.py -h
 
 5. **Ustawienie własnych parametrów t i m**:
    ```bash
-   python bch_encoder_decoder.py -t 7 -m 9 -num_errors 7
+   python3 bch_encoder_decoder.py -t 7 -m 9 -num_errors 7
    ```
    - Ustawia zdolność korekcji błędów na 7.
    - Ustawia rząd ciała Galois na 9.
@@ -126,7 +127,7 @@ python bch_encoder_decoder.py -h
 **Polecenie**:
 
 ```bash
-python bch_encoder_decoder.py -num_errors 3
+python3 bch_encoder_decoder.py -num_errors 3
 ```
 
 **Wyjście**:
@@ -174,7 +175,7 @@ All injected errors were successfully corrected!
 **Polecenie**:
 
 ```bash
-python bch_encoder_decoder.py -message 041b8d02ea6ab41b64c73565c9fbd18378df6ed393b0a42142d4 -num_errors 5
+python3 bch_encoder_decoder.py -message 041b8d02ea6ab41b64c73565c9fbd18378df6ed393b0a42142d4 -num_errors 5
 ```
 
 **Wyjście**:
@@ -231,11 +232,11 @@ Aplikacja pozwala na efektywne kodowanie i dekodowanie wiadomości z wykorzystan
 - **Ciało Galois**: [Wikipedia - Ciało Galois](https://pl.wikipedia.org/wiki/Cia%C5%82o_Galois)
 - **Biblioteka bchlib**: [GitHub - bchlib](https://github.com/tomerfiliba/bchlib)
 - **Biblioteka colorama**: [PyPI - colorama](https://pypi.org/project/colorama/)
-- **Dokumentacja argparse**: [Python - argparse](https://docs.python.org/3/library/argparse.html)
+- **Dokumentacja argparse**: [Python3 - argparse](https://docs.python3.org/3/library/argparse.html)
 
 **Uwaga**: Przed uruchomieniem programu należy zainstalować wymagane biblioteki:
 
 ```bash
-python3 -m venv venv
+python33 -m venv venv
 pip install -r requirements.txt
 ```
