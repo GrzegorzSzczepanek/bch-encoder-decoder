@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-# TODO popraw PDFa
-# TODO add option to inject errors into specific bits (input)
-# TODO sprawozdanie
-# TODO update requitements and pass the libs
-# TODO odwołania do źródeł (bchlib na gituhubie) z dniem kiedy czytaliśmy
-
 import bchlib
 import random
 import logging
@@ -53,7 +47,6 @@ def hamming_7_4_decode(codeword):
     data_bits = [r[3], r[4], r[5], r[6]]
     return data_bits, syndrome
 
-
 def log_colored(message, color):
     """Log messages with color."""
     logging.info(f"{color}{message}{Style.RESET_ALL}")
@@ -74,22 +67,38 @@ def encode_message(bch, data):
     ecc = bch.encode(data)
     return data + ecc
 
-def inject_errors(data, num_errors):
-    """Inject a specified number of bit errors into the data."""
+def inject_errors(data, num_errors=0, specific_bits=None):
+    """
+    Inject a specified number of bit errors into the data.
+    If specific_bits is provided, errors are injected at those bit positions.
+    """
+    if specific_bits is not None:
+        if not isinstance(specific_bits, list):
+            raise TypeError("specific_bits should be a list of bit positions")
+        error_positions = specific_bits
+    else:
+        # Randomly select bit positions if specific_bits is not provided
+        if isinstance(data, bytearray):
+            data_len_bits = len(data) * 8
+        elif isinstance(data, list):
+            data_len_bits = len(data)
+        else:
+            raise TypeError("Unsupported data type for inject_errors")
+        if num_errors > data_len_bits:
+            raise ValueError("Number of errors exceeds the number of bits in data")
+        error_positions = random.sample(range(data_len_bits), num_errors)
+    
     if isinstance(data, bytearray):
         data_with_errors = bytearray(data)
-        data_len_bits = len(data_with_errors) * 8
-        error_positions = random.sample(range(data_len_bits), num_errors)
         for bit in error_positions:
             bitflip(data_with_errors, bit)
     elif isinstance(data, list):
         data_with_errors = data[:]
-        data_len_bits = len(data_with_errors)
-        error_positions = random.sample(range(data_len_bits), num_errors)
         for bit in error_positions:
             bitflip(data_with_errors, bit)
     else:
         raise TypeError("Unsupported data type for inject_errors")
+    
     return data_with_errors, error_positions
 
 def decode_and_correct(bch, corrupted_data):
@@ -162,7 +171,7 @@ def visualize_changes(original, corrupted, corrected, injected_bits, corrected_b
 
     return ''.join(output)
 
-def run_test(bch, message, num_errors=0, use_hamming=False):
+def run_test(bch, message, num_errors=0, specific_bits=None, use_hamming=False):
     """Run a test by encoding, injecting errors, and decoding."""
     logging.info(f"\n{'-'*40}\nOriginal Message:")
     if use_hamming:
@@ -174,7 +183,7 @@ def run_test(bch, message, num_errors=0, use_hamming=False):
 
         # Inject errors
         if num_errors > 0:
-            corrupted_codeword, injected_bits = inject_errors(codeword, num_errors)
+            corrupted_codeword, injected_bits = inject_errors(codeword, num_errors, specific_bits)
             log_colored(f"\nInjected {num_errors} Errors at bit positions: {injected_bits}", Fore.RED)
             logging.info("Corrupted Codeword:")
             logging.info(''.join(str(b) for b in corrupted_codeword))
@@ -225,7 +234,7 @@ def run_test(bch, message, num_errors=0, use_hamming=False):
 
         # Inject errors
         if num_errors > 0:
-            corrupted_codeword, injected_bits = inject_errors(codeword, num_errors)
+            corrupted_codeword, injected_bits = inject_errors(codeword, num_errors, specific_bits)
             log_colored(f"\nInjected {num_errors} Errors at bit positions: {injected_bits}", Fore.RED)
             logging.info("Corrupted Codeword:")
             logging.info(corrupted_codeword.hex())
@@ -269,12 +278,26 @@ def main():
     parser.add_argument('-m', type=int, default=8, help='Galois Field order (default: 8)')
     parser.add_argument('-message', type=str, help='Message to encode in hexadecimal')
     parser.add_argument('-num_errors', type=int, default=0, help='Number of bit errors to inject (default: 0)')
+    parser.add_argument('-error_bits', type=str, help='Comma-separated list of bit positions to inject errors')
     parser.add_argument('-verbose', action='store_true', help='Enable detailed logging')
     args = parser.parse_args()
 
     # Configure logging level
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    # Parse specific error bits if provided
+    if args.error_bits:
+        try:
+            specific_bits = [int(bit.strip()) for bit in args.error_bits.split(',')]
+        except ValueError:
+            print("Error: -error_bits must be a comma-separated list of integers.")
+            sys.exit(1)
+        if args.num_errors != len(specific_bits):
+            print("Error: Number of bits in -error_bits must match -num_errors.")
+            sys.exit(1)
+    else:
+        specific_bits = None
 
     # Determine if we should use Hamming code
     if args.m < 5:
@@ -294,12 +317,15 @@ def main():
         # Prepare message
         if args.message:
             message = args.message
+            if len(message) > 1:  # Each hex digit represents 4 bits
+                print("Error: For Hamming (7,4) code, provide a single hexadecimal digit (4 bits).")
+                sys.exit(1)
             message_bits = bin(int(message, 16))[2:].zfill(4)
             message_bits = [int(b) for b in message_bits[-4:]]
         else:
             message_bits = [random.randint(0,1) for _ in range(4)]
         # Run test
-        run_test(None, message_bits, num_errors=args.num_errors, use_hamming=True)
+        run_test(None, message_bits, num_errors=args.num_errors, specific_bits=specific_bits, use_hamming=True)
     else:
         # Initialize BCH
         bch = bchlib.BCH(args.t, m=args.m)
@@ -328,7 +354,7 @@ def main():
             message = bytearray(random.getrandbits(8) for _ in range(max_data_bytes))
 
         # Run test
-        run_test(bch, message, num_errors=args.num_errors)
+        run_test(bch, message, num_errors=args.num_errors, specific_bits=specific_bits)
 
 if __name__ == "__main__":
     main()
