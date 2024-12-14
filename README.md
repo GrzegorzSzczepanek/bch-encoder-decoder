@@ -38,6 +38,8 @@ Kody BCH to rodzaj cyklicznych kodów korekcyjnych błędów, zdolnych do korygo
 
 Kody BCH opierają się na arytmetyce w ciałach skończonych, zwanych ciałami Galois (GF). W szczególności wykorzystuje się ciała GF(2^m), gdzie m jest stopniem ciała. W tej aplikacji używamy ciał GF(2^m) do operacji matematycznych niezbędnych w kodach BCH.
 
+Więcej w [pliku](Matematyczne-Podstawy-Kodów-BCH.pdf).
+
 ## Opis Programu
 
 ### Funkcjonalności
