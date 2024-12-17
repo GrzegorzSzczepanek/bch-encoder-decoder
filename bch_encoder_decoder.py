@@ -99,17 +99,27 @@ def inject_errors(data, num_errors=0, specific_bits=None):
 
 
 def decode_and_correct(bch, corrupted_data):
-    data = corrupted_data[: -bch.ecc_bytes]
-    recv_ecc = corrupted_data[-bch.ecc_bytes :]
-
-    nerr = bch.decode(data, recv_ecc)
-    if nerr >= 0:
-        corrected_data = bytearray(data)
-        corrected_ecc = bytearray(recv_ecc)
-        bch.correct(corrected_data, corrected_ecc)
-        return corrected_data + corrected_ecc, bch.errloc
+    if isinstance(bch, CustomBCH):
+        # For CustomBCH, the last ecc_bytes are the ECC
+        data = corrupted_data[: -bch.ecc_bytes]
+        recv_ecc = corrupted_data[-bch.ecc_bytes :]
+        nerr = bch.decode(data, recv_ecc)
+        if nerr >= 0:
+            corrected_data, corrected_ecc = bch.correct(data, recv_ecc)
+            return corrected_data + corrected_ecc, bch.errloc
+        else:
+            return None, None
     else:
-        return None, None
+        # For bchlib.BCH
+        data = corrupted_data[: -bch.ecc_bytes]
+        recv_ecc = corrupted_data[-bch.ecc_bytes :]
+        nerr = bch.decode(data, recv_ecc)
+        if nerr >= 0:
+            corrected_data = bytearray(data)
+            bch.correct(corrected_data, recv_ecc)
+            return corrected_data + recv_ecc, bch.errloc
+        else:
+            return None, None
 
 
 def visualize_changes(original, corrupted, corrected, injected_bits, corrected_bits):
@@ -227,79 +237,132 @@ def run_test(bch, message, num_errors=0, specific_bits=None, use_hamming=False):
             log_colored("\nSome injected errors were not corrected!", Fore.RED)
     else:
         # BCH path
-        logging.info(message.hex())
-        codeword = encode_message(bch, message)
-        logging.info("\nEncoded Codeword:")
-        logging.info(codeword.hex())
+        if isinstance(bch, CustomBCH):
+            logging.info(message.hex())
+            codeword = encode_message(bch, message)
+            logging.info("\nEncoded Codeword:")
+            logging.info(codeword.hex())
 
-        if num_errors > 0:
-            corrupted_codeword, injected_bits = inject_errors(
-                codeword, num_errors, specific_bits
-            )
-            log_colored(
-                f"\nInjected {num_errors} Errors at bit positions: {injected_bits}",
-                Fore.RED,
-            )
-            logging.info("Corrupted Codeword:")
-            logging.info(corrupted_codeword.hex())
-        else:
-            corrupted_codeword = codeword
-            injected_bits = []
-
-        corrected_codeword, corrected_bits = decode_and_correct(bch, corrupted_codeword)
-        if corrected_codeword:
-            logging.info("\nCorrected Codeword:")
-            logging.info(corrected_codeword.hex())
-
-            logging.info("\nVisualized Changes (bits):")
-            visualization = visualize_changes(
-                codeword,
-                corrupted_codeword,
-                corrected_codeword,
-                injected_bits,
-                corrected_bits,
-            )
-            logging.info(visualization)
-
-            if corrected_bits:
-                log_colored("\nCorrected Bit Positions:", Fore.GREEN)
-                for bit in corrected_bits:
-                    log_colored(f"Bit {bit}", Fore.GREEN)
-
-            if injected_bits:
-                log_colored("\nInjected Bit Positions:", Fore.RED)
-                for bit in injected_bits:
-                    log_colored(f"Bit {bit}", Fore.RED)
-
-            if set(injected_bits) == set(corrected_bits):
-                log_colored(
-                    "\nAll injected errors were successfully corrected!", Fore.GREEN
+            if num_errors > 0:
+                corrupted_codeword, injected_bits = inject_errors(
+                    codeword, num_errors, specific_bits
                 )
+                log_colored(
+                    f"\nInjected {num_errors} Errors at bit positions: {injected_bits}",
+                    Fore.RED,
+                )
+                logging.info("Corrupted Codeword:")
+                logging.info(corrupted_codeword.hex())
             else:
-                log_colored("\nSome injected errors were not corrected!", Fore.RED)
+                corrupted_codeword = codeword
+                injected_bits = []
+
+            corrected_codeword, corrected_bits = decode_and_correct(
+                bch, corrupted_codeword
+            )
+            if corrected_codeword:
+                logging.info("\nCorrected Codeword:")
+                logging.info(corrected_codeword.hex())
+
+                logging.info("\nVisualized Changes (bits):")
+                visualization = visualize_changes(
+                    codeword,
+                    corrupted_codeword,
+                    corrected_codeword,
+                    injected_bits,
+                    corrected_bits,
+                )
+                logging.info(visualization)
+
+                if corrected_bits:
+                    log_colored("\nCorrected Bit Positions:", Fore.GREEN)
+                    for bit in corrected_bits:
+                        log_colored(f"Bit {bit}", Fore.GREEN)
+
+                if injected_bits:
+                    log_colored("\nInjected Bit Positions:", Fore.RED)
+                    for bit in injected_bits:
+                        log_colored(f"Bit {bit}", Fore.RED)
+
+                if set(injected_bits) == set(corrected_bits):
+                    log_colored(
+                        "\nAll injected errors were successfully corrected!", Fore.GREEN
+                    )
+                else:
+                    log_colored("\nSome injected errors were not corrected!", Fore.RED)
+            else:
+                logging.error("Decoding failed. Unable to correct the errors.")
         else:
-            logging.error("Decoding failed. Unable to correct the errors.")
+            logging.info(message.hex())
+            codeword = encode_message(bch, message)
+            logging.info("\nEncoded Codeword:")
+            logging.info(codeword.hex())
+
+            if num_errors > 0:
+                corrupted_codeword, injected_bits = inject_errors(
+                    codeword, num_errors, specific_bits
+                )
+                log_colored(
+                    f"\nInjected {num_errors} Errors at bit positions: {injected_bits}",
+                    Fore.RED,
+                )
+                logging.info("Corrupted Codeword:")
+                logging.info(corrupted_codeword.hex())
+            else:
+                corrupted_codeword = codeword
+                injected_bits = []
+
+            corrected_codeword, corrected_bits = decode_and_correct(
+                bch, corrupted_codeword
+            )
+            if corrected_codeword:
+                logging.info("\nCorrected Codeword:")
+                logging.info(corrected_codeword.hex())
+
+                logging.info("\nVisualized Changes (bits):")
+                visualization = visualize_changes(
+                    codeword,
+                    corrupted_codeword,
+                    corrected_codeword,
+                    injected_bits,
+                    corrected_bits,
+                )
+                logging.info(visualization)
+
+                if corrected_bits:
+                    log_colored("\nCorrected Bit Positions:", Fore.GREEN)
+                    for bit in corrected_bits:
+                        log_colored(f"Bit {bit}", Fore.GREEN)
+
+                if injected_bits:
+                    log_colored("\nInjected Bit Positions:", Fore.RED)
+                    for bit in injected_bits:
+                        log_colored(f"Bit {bit}", Fore.RED)
+
+                if set(injected_bits) == set(corrected_bits):
+                    log_colored(
+                        "\nAll injected errors were successfully corrected!", Fore.GREEN
+                    )
+                else:
+                    log_colored("\nSome injected errors were not corrected!", Fore.RED)
+            else:
+                logging.error("Decoding failed. Unable to correct the errors.")
 
 
 class CustomBCH:
     def __init__(self, t, m=4):
-        if m == 4 and t == 1:
+        if m == 4 and t in [1, 2]:
             self.m = m
             self.t = t
-            self.n = 15
-            self.k = 11
+            self.n = (1 << m) - 1  # n = 2^m -1 = 15
+            if t == 1:
+                self.k = 11
+                self.generator = 0b10011  # x^4 + x + 1
+            elif t == 2:
+                self.k = 7
+                self.generator = 0b110110111  # Example generator for t=2
             self.ecc_bits = self.n - self.k
             self.ecc_bytes = (self.ecc_bits + 7) // 8
-            self.generator = 0b10011
-            self.errloc = []
-        elif m == 4 and t == 2:
-            self.m = m
-            self.t = t
-            self.n = 15
-            self.k = 7
-            self.ecc_bits = self.n - self.k
-            self.ecc_bytes = (self.ecc_bits + 7) // 8
-            self.generator = 0b110110111
             self.errloc = []
         else:
             raise NotImplementedError(
@@ -307,73 +370,85 @@ class CustomBCH:
             )
 
     def encode(self, data):
-        msg_bits = self._bytes_to_bits(data, self.k)
-        msg_shifted = msg_bits << self.ecc_bits
-        remainder = self._poly_mod(msg_shifted, self.generator, self.ecc_bits, self.n)
-        codeword_bits = (msg_shifted | remainder) & ((1 << self.n) - 1)
-        return self._bits_to_bytes(codeword_bits, self.n)
+        # Ensure data length matches k bits
+        data_bits = self._bytes_to_bits(data, self.k)
+        if data_bits >= (1 << self.k):
+            raise ValueError("Data too large to encode with given k.")
+
+        # Shift data bits to make space for ECC
+        codeword = data_bits << self.ecc_bits
+        # Calculate ECC using polynomial division
+        remainder = self._poly_mod(codeword, self.generator)
+        # Append ECC to form the full codeword
+        codeword |= remainder
+        # Convert codeword to bytes
+        codeword_bytes = self._bits_to_bytes(codeword, self.n)
+        # Extract ECC from codeword
+        ecc = codeword_bytes[-self.ecc_bytes :]
+        return ecc
 
     def decode(self, data, recv_ecc):
+        # Combine data and received ECC to form the full codeword
         codeword = bytearray(data + recv_ecc)
-        codeword_bits_int = self._bytes_to_int(codeword, self.n)
-        syndrome = self._poly_mod(
-            codeword_bits_int, self.generator, self.ecc_bits, self.n
-        )
+        codeword_bits = self._bytes_to_int(codeword, self.n)
+        # Calculate syndrome
+        syndrome = self._poly_mod(codeword_bits, self.generator)
         if syndrome == 0:
             self.errloc = []
-            return 0
+            return 0  # No error
         else:
+            # Attempt to locate and correct errors
             if self.t == 1:
-                # Single-error correction
+                # Single error correction
                 for bit_pos in range(self.n):
-                    test_word = codeword_bits_int ^ (1 << (self.n - 1 - bit_pos))
-                    test_syndrome = self._poly_mod(
-                        test_word, self.generator, self.ecc_bits, self.n
-                    )
+                    test_word = codeword_bits ^ (1 << bit_pos)
+                    test_syndrome = self._poly_mod(test_word, self.generator)
                     if test_syndrome == 0:
                         self.errloc = [bit_pos]
-                        return 1
-                return -1
+                        return 1  # Single error corrected
+                return -1  # Unable to correct
             elif self.t == 2:
-                # Attempt single-error fix as placeholder
+                # Two error correction (simplistic approach)
+                error_positions = []
                 for bit_pos in range(self.n):
-                    test_word = codeword_bits_int ^ (1 << (self.n - 1 - bit_pos))
-                    test_syndrome = self._poly_mod(
-                        test_word, self.generator, self.ecc_bits, self.n
-                    )
+                    test_word = codeword_bits ^ (1 << bit_pos)
+                    test_syndrome = self._poly_mod(test_word, self.generator)
                     if test_syndrome == 0:
-                        self.errloc = [bit_pos]
-                        return 1
-                return -1
+                        error_positions.append(bit_pos)
+                        if len(error_positions) == self.t:
+                            break
+                if len(error_positions) == self.t:
+                    self.errloc = error_positions
+                    return self.t  # Two errors corrected
+                return -1  # Unable to correct
 
     def correct(self, data, ecc):
-        if self.errloc:
-            codeword = bytearray(data + ecc)
-            codeword_bits_int = self._bytes_to_int(codeword, self.n)
-            for bit in self.errloc:
-                codeword_bits_int ^= 1 << (self.n - 1 - bit)
-            corrected = self._bits_to_bytes(codeword_bits_int, self.n)
-            data_len_bytes = (self.k + 7) // 8
-            ecc_len_bytes = self.ecc_bytes
-            for i in range(data_len_bytes):
-                data[i] = corrected[i]
-            for i in range(ecc_len_bytes):
-                ecc[i] = corrected[data_len_bytes + i]
+        if not self.errloc:
+            return data, ecc  # No correction needed
+        codeword = bytearray(data + ecc)
+        for bit in self.errloc:
+            byte_index = bit // 8
+            bit_index = bit % 8
+            codeword[byte_index] ^= 1 << (7 - bit_index)
+        # Split corrected codeword back into data and ECC
+        corrected_data = codeword[: len(data)]
+        corrected_ecc = codeword[len(data) :]
+        return corrected_data, corrected_ecc
 
     @staticmethod
     def _bytes_to_bits(data, length_bits):
         val = 0
         bits_needed = length_bits
-        for i in range(len(data)):
+        for byte in data:
             for b in range(8):
                 if bits_needed == 0:
                     break
-                bit_val = (data[i] >> (7 - b)) & 1
+                bit_val = (byte >> (7 - b)) & 1
                 val = (val << 1) | bit_val
                 bits_needed -= 1
             if bits_needed == 0:
                 break
-        val = val << bits_needed
+        val = val << bits_needed  # Pad with zeros if necessary
         return val
 
     @staticmethod
@@ -395,15 +470,15 @@ class CustomBCH:
         return val
 
     @staticmethod
-    def _poly_mod(dividend, generator, ecc_bits, n):
-        remainder = dividend
-        gen_degree = generator.bit_length() - 1
-        for shift in range(n - ecc_bits):
-            if (remainder & (1 << (n - 1 - shift))) != 0:
-                offset = (n - 1 - shift) - gen_degree
-                remainder ^= generator << offset
-        remainder &= (1 << ecc_bits) - 1
-        return remainder
+    def _poly_mod(dividend, generator):
+        generator_degree = generator.bit_length() - 1
+        while dividend.bit_length() >= generator.bit_length():
+            shift = dividend.bit_length() - generator.bit_length()
+            dividend ^= generator << shift
+        return dividend
+
+    def get_error_locations(self):
+        return self.errloc
 
 
 def main():
@@ -449,28 +524,29 @@ def main():
     if args.m < 5:
         # Using custom BCH
         if args.m == 4:
-            if args.t == 1:
-                bch = CustomBCH(t=1, m=4)
-                # BCH(15,11,1)
-                max_data_bits = bch.k
-                max_data_bytes = (bch.k + 7) // 8
-            elif args.t == 2:
-                bch = CustomBCH(t=2, m=4)
-                # BCH(15,7,2)
+            if args.t in [1, 2]:
+                try:
+                    bch = CustomBCH(t=args.t, m=4)
+                except NotImplementedError as e:
+                    print(f"Error: {e}")
+                    sys.exit(1)
+                # BCH(15,11,1) or BCH(15,7,2)
                 max_data_bits = bch.k
                 max_data_bytes = (bch.k + 7) // 8
             else:
-                raise NotImplementedError(
-                    f"Custom BCH with m=4, t={args.t} not implemented."
-                )
+                print(f"Error: Unsupported t={args.t} for m=4.")
+                sys.exit(1)
         else:
-            raise NotImplementedError(f"Custom BCH with m={args.m} not implemented.")
+            print(f"Error: Custom BCH with m={args.m} not implemented.")
+            sys.exit(1)
 
         # Print parameters for visibility
+        print(f"Using Custom BCH Code")
         print(f"n (codeword length): {bch.n} bits")
         print(f"ecc_bits: {bch.ecc_bits} bits")
         print(f"ecc_bytes: {bch.ecc_bytes} bytes")
         print(f"t (error correction capability): {bch.t}")
+        print(f"k (message length): {bch.k} bits")
         print(f"Maximum data bits: {max_data_bits} bits")
         print(f"Maximum data bytes: {max_data_bytes} bytes")
 
@@ -497,7 +573,11 @@ def main():
 
     else:
         # Using bchlib
-        bch = bchlib.BCH(args.t, m=args.m)
+        try:
+            bch = bchlib.BCH(args.t, m=args.m)
+        except ValueError as e:
+            print(f"Error initializing bchlib.BCH: {e}")
+            sys.exit(1)
         max_data_bits = bch.n - bch.ecc_bits
         max_data_bytes = max_data_bits // 8
 
@@ -509,7 +589,11 @@ def main():
         print(f"Maximum data bytes: {max_data_bytes} bytes")
 
         if args.message:
-            message = bytearray.fromhex(args.message)
+            try:
+                message = bytearray.fromhex(args.message)
+            except ValueError:
+                print("Error: -message must be a valid hexadecimal string.")
+                sys.exit(1)
             if len(message) > max_data_bytes:
                 print(
                     f"Error: Message length exceeds maximum allowed ({max_data_bytes} bytes)"
